@@ -18,3 +18,4 @@ class Board(Document):
     board_name = StringField()
     players = ListField(StringField())
     tiles = EmbeddedDocumentListField(Tile)
+    state = StringField()

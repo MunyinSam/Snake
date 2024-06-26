@@ -1,5 +1,9 @@
 from classes import *
+import random
 
+def random_number():
+    number = random.randint(1,6)
+    return number
 
 def move_player(player_name, current_pos, next_pos):
 

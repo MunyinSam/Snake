@@ -21,46 +21,60 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 # -------------------------------------------------------------------------
+class GameView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__(timeout=None)
+        self.ctx = ctx
 
-@bot.command(name="cr_board")
-async def create_board(ctx):
-
-    tiles = [Tile(type="normal") for _ in range(25)]
-    board = Board(board_name="default",players=[], tiles=tiles)
-    board.save()
-
-@bot.command(name="cr_player")
-async def create_player(ctx):
-
-    name = str(ctx.message.author)
-
-    player = Player(name=name, position=0)
-    player.save()
-
-@bot.command(name="add")
-async def add(ctx):
-
-    player_name = str(ctx.message.author)    
-    player = Player.objects(name=player_name).first()
-    if not player:
-        await ctx.send(f"Player {player_name} not found.")
-        return
-    board = Board.objects().first() 
-    if not board:
-        await ctx.send("Board not found.")
+    @discord.ui.button(label="Roll", style=discord.ButtonStyle.green, custom_id="roll_dice")
+    async def start_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         return
 
-    board.tiles[0].occupied_by.append(str(player.name))
-    if player_name not in board.players:
-        board.players.append(str(player_name))
+
+class LobbyView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__(timeout=None)
+        self.ctx = ctx
+
+    @discord.ui.button(label="Join Game", style=discord.ButtonStyle.red, custom_id="join_game")
+    async def join_game_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        board = Board.objects(board_name="default").first()
+
+        if board.state == "pending":
+            board.players.append(str(interaction.user.name))
+            board.save()
+
+            embed = discord.Embed(title='You have joined the room')
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            print("The Game has already started")
+
+    @discord.ui.button(label="Start Game", style=discord.ButtonStyle.green, custom_id="start_game")
+    async def start_game_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        board = Board.objects(board_name="default").first()
+
+        if board.state == "pending" and len(board.players) > 1:
+            board.state = "started"
+            board.save()
+
+            embed = discord.Embed(title='The Game has started')
+            await interaction.response.send_message(embed=embed, ephemeral=False, view=GameView(self.ctx))
+
+
+
+        
+
+@bot.command(name="play")
+async def display_lobby(ctx):
+
+    tiles = [Tile(type="normal", occupied_by=[""]) for _ in range(25)]
+    board = Board(board_name="default",players=[], tiles=tiles, state="pending")
     board.save()
 
-
-
-    await ctx.send(f"Player {player_name} has been added to the first tile.")
-
-move_player("munyin",0,5)
-
+    embed = discord.Embed(title="Lobby", description="Select an option to proceed:")
+    await ctx.send(embed=embed,view=LobbyView(ctx))
 
 
 
