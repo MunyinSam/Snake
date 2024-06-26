@@ -5,6 +5,13 @@ def random_number():
     number = random.randint(1,6)
     return number
 
+def find_position(strings, item):
+    try:
+        position = strings.index(item)
+        return position
+    except ValueError:
+        return -1
+
 def move_player(player_name, current_pos, next_pos):
 
     player_obj = Player.objects(name=str(player_name)).first()

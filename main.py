@@ -28,7 +28,25 @@ class GameView(discord.ui.View):
 
     @discord.ui.button(label="Roll", style=discord.ButtonStyle.green, custom_id="roll_dice")
     async def start_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        return
+        
+        board = Board.objects(board_name="default").first()
+        player = Player.objects(name=str(interaction.user.name)).first()
+
+        if board.current_turn == str(interaction.user.name):
+
+            board.tiles[int(player.position)].occupied_by.remove(str(player.name))
+            roll = random_number()
+            player.position += roll
+            player.save()
+            board.tiles[int(player.position)].occupied_by.append(str(player.name))
+
+            pos = find_position(board.players, str(player.name))
+            board.current_turn = board.players[int(pos)+1]
+            board.save()
+
+            embed = discord.Embed(title=f'{player.name} has moved to ')
+
+        
 
 
 class LobbyView(discord.ui.View):
@@ -57,20 +75,27 @@ class LobbyView(discord.ui.View):
 
         if board.state == "pending" and len(board.players) > 1:
             board.state = "started"
+
+            player_list = random.shuffle(board.players)
+            board.players = player_list
+            board.current_turn = board.players[0]
             board.save()
+
+            for player_name in board.players:
+                player = Player.objects(name=str(player_name)).first()
+                player.position = 0
+                player.save()
 
             embed = discord.Embed(title='The Game has started')
             await interaction.response.send_message(embed=embed, ephemeral=False, view=GameView(self.ctx))
 
 
 
-        
-
 @bot.command(name="play")
 async def display_lobby(ctx):
 
     tiles = [Tile(type="normal", occupied_by=[""]) for _ in range(25)]
-    board = Board(board_name="default",players=[], tiles=tiles, state="pending")
+    board = Board(board_name="default",players=[], tiles=tiles, state="pending", current_turn="")
     board.save()
 
     embed = discord.Embed(title="Lobby", description="Select an option to proceed:")

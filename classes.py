@@ -19,3 +19,4 @@ class Board(Document):
     players = ListField(StringField())
     tiles = EmbeddedDocumentListField(Tile)
     state = StringField()
+    current_turn = StringField()
