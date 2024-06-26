@@ -15,5 +15,6 @@ class Tile(EmbeddedDocument):
     occupied_by = ListField(StringField())
 
 class Board(Document):
+    board_name = StringField()
     players = ListField(StringField())
     tiles = EmbeddedDocumentListField(Tile)
