@@ -21,6 +21,8 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 # -------------------------------------------------------------------------
+
+
 class GameView(discord.ui.View):
     def __init__(self, ctx):
         super().__init__(timeout=None)
@@ -34,6 +36,8 @@ class GameView(discord.ui.View):
 
         if board.current_turn == str(interaction.user.name):
 
+            previous_player_pos = player.position
+
             board.tiles[int(player.position)].occupied_by.remove(str(player.name))
             roll = random_number()
             player.position += roll
@@ -41,13 +45,16 @@ class GameView(discord.ui.View):
             board.tiles[int(player.position)].occupied_by.append(str(player.name))
 
             pos = find_position(board.players, str(player.name))
-            board.current_turn = board.players[int(pos)+1]
+            board.current_turn = board.players[(int(pos) + 1) % len(board.players)]
             board.save()
+            current_player_pos = player.position
 
-            embed = discord.Embed(title=f'{player.name} has moved to ')
-
+            embed = discord.Embed(title=f'{player.name} has moved from {previous_player_pos} to {current_player_pos}')
+            await interaction.response.send_message(embed=embed, ephemeral=False, delete_after=10)
         
-
+        else:
+            embed = discord.Embed(title='Wait for your Turn!', description=f'current turn: {board.current_turn}')
+            await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=3)
 
 class LobbyView(discord.ui.View):
     def __init__(self, ctx):
@@ -57,16 +64,28 @@ class LobbyView(discord.ui.View):
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.red, custom_id="join_game")
     async def join_game_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
+        player_obj = Player.objects(name=str(interaction.user.name)).first()
+        if player_obj:
+            pass
+        else:
+            player = Player(name=str(interaction.user.name), position=0)
+            player.save()
+
         board = Board.objects(board_name="default").first()
 
         if board.state == "pending":
             board.players.append(str(interaction.user.name))
+            board.tiles[0].occupied_by.append(str(interaction.user.name))
             board.save()
 
-            embed = discord.Embed(title='You have joined the room')
+            player_list = [player for player in board.players]
+
+            embed = discord.Embed(title='You have joined the room',description=player_list)
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             print("The Game has already started")
+            embed = discord.Embed(title='The game has already started')
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="Start Game", style=discord.ButtonStyle.green, custom_id="start_game")
     async def start_game_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -76,8 +95,7 @@ class LobbyView(discord.ui.View):
         if board.state == "pending" and len(board.players) > 1:
             board.state = "started"
 
-            player_list = random.shuffle(board.players)
-            board.players = player_list
+            random.shuffle(board.players)
             board.current_turn = board.players[0]
             board.save()
 
@@ -86,7 +104,7 @@ class LobbyView(discord.ui.View):
                 player.position = 0
                 player.save()
 
-            embed = discord.Embed(title='The Game has started')
+            embed = discord.Embed(title=f'The Game has started. {board.current_turn} goes first')
             await interaction.response.send_message(embed=embed, ephemeral=False, view=GameView(self.ctx))
 
 
