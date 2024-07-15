@@ -42,12 +42,32 @@ class GameView(discord.ui.View):
             roll = random_number()
             player.position += roll
             player.save()
-            board.tiles[int(player.position)].occupied_by.append(str(player.name))
+
+            tile_type = board.tiles[int(player.position)].type
+            if tile_type == "normal":
+                board.tiles[int(player.position)].occupied_by.append(str(player.name))
+                board.save()
+            if tile_type == "up":
+                roll = random_number()
+                player.position += roll*2
+                board.tiles[int(player.position)].occupied_by.append(str(player.name))
+                board.save()
+            if tile_type == "down":
+                roll = random_number()
+                player.position -= roll*2
+                board.tiles[int(player.position)].occupied_by.append(str(player.name))
+                board.save()
+
+            
 
             pos = find_position(board.players, str(player.name))
+
             board.current_turn = board.players[(int(pos) + 1) % len(board.players)]
             board.save()
             current_player_pos = player.position
+
+            
+
 
             embed = discord.Embed(title=f'{player.name} has moved from {previous_player_pos} to {current_player_pos}')
             await interaction.response.send_message(embed=embed, ephemeral=False, delete_after=10)
